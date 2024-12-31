@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Net;
-using System.Threading.Tasks;
 using CometD.NetCore.Client;
 using CometD.NetCore.Client.Transport;
-using PluginSalesforce.API.Utility;
 using PluginSalesforce.Helper;
 
 namespace PluginSalesforce.API.Factory
@@ -14,12 +12,12 @@ namespace PluginSalesforce.API.Factory
     {
         public PushTopicConnection GetPushTopicConnection(RequestHelper requestHelper, string channel)
         {
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls13;
             PushTopicConnection pushTopicConnection = null;
 
             var accessToken = requestHelper.GetToken();
             var instanceUrl = requestHelper.GetInstanceUrl();
-            
+
             try
             {
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
@@ -33,10 +31,10 @@ namespace PluginSalesforce.API.Factory
                 {
                     {HttpRequestHeader.Authorization.ToString(), "Bearer " + accessToken}
                 };
-                var transport = new LongPollingTransport(options, new NameValueCollection {collection});
+                var transport = new LongPollingTransport(options, new NameValueCollection { collection });
                 var serverUri = new Uri(instanceUrl);
                 var endpoint = $"{serverUri.Scheme}://{serverUri.Host}{streamingEndpointURI}";
-                var bayeuxClient = new BayeuxClient(endpoint, new[] {transport});
+                var bayeuxClient = new BayeuxClient(endpoint, new[] { transport });
 
                 pushTopicConnection = new PushTopicConnection(bayeuxClient, channel);
             }
