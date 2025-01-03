@@ -157,12 +157,12 @@ namespace PluginSalesforce.Plugin
                     InstanceUrl = content.InstanceUrl
                 });
 
-                if (String.IsNullOrEmpty(oAuthState.RefreshToken))
+                if (string.IsNullOrEmpty(oAuthState.RefreshToken))
                 {
                     throw new Exception("Response did not contain a refresh token");
                 }
 
-                if (String.IsNullOrEmpty(content.InstanceUrl))
+                if (string.IsNullOrEmpty(content.InstanceUrl))
                 {
                     throw new Exception("Response did not contain an instance url");
                 }
@@ -684,7 +684,7 @@ namespace PluginSalesforce.Plugin
             };
 
             // get fields for module
-            var response = await _client.GetAsync(String.Format("/sobjects/{0}/describe", request.Schema.Id));
+            var response = await _client.GetAsync(string.Format("/sobjects/{0}/describe", request.Schema.Id));
 
             // for each field in the schema add a new property
             var describeResponse =
@@ -749,7 +749,7 @@ namespace PluginSalesforce.Plugin
                         };
                         await responseStream.WriteAsync(ack);
 
-                        if (String.IsNullOrEmpty(task.Result))
+                        if (string.IsNullOrEmpty(task.Result))
                         {
                             outCount++;
                         }
@@ -820,7 +820,7 @@ namespace PluginSalesforce.Plugin
                     if (id != null)
                     {
                         // build and send request
-                        var uri = String.Format("/sobjects/{0}/{1}", schema.Id, id);
+                        var uri = string.Format("/sobjects/{0}/{1}", schema.Id, id);
 
                         var response = await _client.GetAsync(uri);
                         response.EnsureSuccessStatusCode();
@@ -847,7 +847,7 @@ namespace PluginSalesforce.Plugin
                         }
 
                         // build and send request
-                        uri = String.Format("/sobjects/{0}/{1}", schema.Id, id);
+                        uri = string.Format("/sobjects/{0}/{1}", schema.Id, id);
 
                         var patchObj = GetPatchObject(schema, recObj);
 
@@ -863,7 +863,7 @@ namespace PluginSalesforce.Plugin
                     else
                     {
                         // record does not have id and needs to be created
-                        var uri = String.Format("/sobjects/{0}", schema.Id);
+                        var uri = string.Format("/sobjects/{0}", schema.Id);
 
                         var patchObj = GetPatchObject(schema, recObj);
 
@@ -907,7 +907,7 @@ namespace PluginSalesforce.Plugin
                     {
                         // delete record
                         // build and send request
-                        var uri = String.Format("/sobjects/{0}/{1}", schema.Id, recObj[key.Id]);
+                        var uri = string.Format("/sobjects/{0}/{1}", schema.Id, recObj[key.Id]);
 
                         var response = await _client.DeleteAsync(uri);
                         response.EnsureSuccessStatusCode();

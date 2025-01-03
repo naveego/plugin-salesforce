@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -20,6 +20,9 @@ namespace PluginSalesforceTest.Plugin
 {
     public class PluginTest
     {
+        const string CLIENT_ID = "";
+        const string CLIENT_SECRET = "";
+
         private ConnectRequest GetConnectSettings()
         {
             return new ConnectRequest
@@ -27,12 +30,12 @@ namespace PluginSalesforceTest.Plugin
                 SettingsJson = "",
                 OauthConfiguration = new OAuthConfiguration
                 {
-                    ClientId = "client",
-                    ClientSecret = "secret",
+                    ClientId = CLIENT_ID,
+                    ClientSecret = CLIENT_SECRET,
                     ConfigurationJson = "{}"
                 },
                 OauthStateJson =
-                    "{\"RefreshToken\":\"refresh\",\"AuthToken\":\"\",\"Config\":\"{\\\"InstanceUrl\\\":\\\"https://test.salesforce.com\\\"}\"}"
+                    "{\"RefreshToken\":\"refresh\",\"AuthToken\":\"\",\"Config\":\"{\\\"InstanceUrl\\\":\\\"https://login.salesforce.com\\\"}\"}"
             };
         }
 
@@ -41,23 +44,28 @@ namespace PluginSalesforceTest.Plugin
             var mockHttpHelper = new MockHttpHelper();
             var mockHttp = new MockHttpMessageHandler();
 
-            mockHttp.When("https://test.salesforce.com/services/oauth2/token")
+            mockHttp.When(HttpMethod.Post, "https://login.salesforce.com/services/oauth2/token")
                 .Respond("application/json", mockHttpHelper.Token);
 
-            mockHttp.When("https://test.salesforce.com/services/data/v52.0/tabs")
+            mockHttp.When("https://login.salesforce.com/services/data/v52.0/tabs")
                 .Respond("application/json", mockHttpHelper.Tabs);
 
-            mockHttp.When("https://test.salesforce.com/services/data/v52.0/sobjects/Lead/describe")
+            mockHttp.When("https://login.salesforce.com/services/data/v52.0/sobjects/Lead/describe")
                 .Respond("application/json", mockHttpHelper.LeadDescribe);
 
-            mockHttp.When("https://test.salesforce.com/services/data/v52.0/sobjects/Account/describe")
+            mockHttp.When("https://login.salesforce.com/services/data/v52.0/sobjects/Account/describe")
                 .Respond("application/json", mockHttpHelper.AccountDescribe);
 
-            mockHttp.When("https://test.salesforce.com/services/data/v52.0/query?q=select+Id,Name,LastModifiedDate+from+Account")
+            mockHttp.When("https://login.salesforce.com/services/data/v52.0/query?q=select+Id,Name,LastModifiedDate+from+Account")
                 .Respond("application/json", mockHttpHelper.AccountQuery);
 
-            mockHttp.When("https://test.salesforce.com/services/data/v52.0/sobjects/Account/1")
+            mockHttp.When("https://login.salesforce.com/services/data/v52.0/query?q=select+fields(all)+from+Account+order+by+id+asc+nulls+last+limit+200+")
+                .Respond("application/json", mockHttpHelper.AccountQuery);
+
+            mockHttp.When("https://login.salesforce.com/services/data/v52.0/sobjects/Account/1")
                 .Respond("application/json", mockHttpHelper.AccountById);
+            
+            // mock needed: https://login.salesforce.com/cometd/52.0
 
             return mockHttp;
         }
@@ -84,8 +92,8 @@ namespace PluginSalesforceTest.Plugin
             {
                 Configuration = new OAuthConfiguration
                 {
-                    ClientId = "client",
-                    ClientSecret = "secret",
+                    ClientId = CLIENT_ID,
+                    ClientSecret = CLIENT_SECRET,
                     ConfigurationJson = "{}"
                 },
                 RedirectUrl = "http://test.com"
@@ -97,8 +105,8 @@ namespace PluginSalesforceTest.Plugin
             var prompt = "consent";
             var display = "popup";
 
-            var authUrl = String.Format(
-                "https://test.salesforce.com/services/oauth2/authorize?client_id={0}&response_type={1}&redirect_uri={2}&prompt={3}&display={4}",
+            var authUrl = string.Format(
+                "https://login.salesforce.com/services/oauth2/authorize?client_id={0}&response_type={1}&redirect_uri={2}&prompt={3}&display={4}",
                 clientId,
                 responseType,
                 redirectUrl,
@@ -139,8 +147,8 @@ namespace PluginSalesforceTest.Plugin
             {
                 Configuration = new OAuthConfiguration
                 {
-                    ClientId = "client",
-                    ClientSecret = "secret",
+                    ClientId = CLIENT_ID,
+                    ClientSecret = CLIENT_SECRET,
                     ConfigurationJson = "{}"
                 },
                 RedirectUrl = "http://test.com?code=authcode",
@@ -317,13 +325,16 @@ namespace PluginSalesforceTest.Plugin
             await channel.ShutdownAsync();
             await server.ShutdownAsync();
         }
-[Fact]
+
+        [Fact]
         public async Task ReadStreamRealTimeTest()
         {
             // setup
+            var mockHttp = GetMockHttpMessageHandler();
+
             Server server = new Server
             {
-                Services = {Publisher.BindService(new PluginSalesforce.Plugin.Plugin())},
+                Services = {Publisher.BindService(new PluginSalesforce.Plugin.Plugin(mockHttp.ToHttpClient()))},
                 Ports = {new ServerPort("localhost", 0, ServerCredentials.Insecure)}
             };
             server.Start();
@@ -334,7 +345,7 @@ namespace PluginSalesforceTest.Plugin
             var client = new Publisher.PublisherClient(channel);
 
             var schema = new Schema();
-            schema.Query = "SELECT Id, Name from Lead";
+            schema.Query = "select Id,Name,LastModifiedDate from Account";
 
             var connectRequest = GetConnectSettings();
 
@@ -360,6 +371,16 @@ namespace PluginSalesforceTest.Plugin
             var records = new List<Record>();
             try
             {
+                var configureRequest = new ConfigureRequest
+                {
+                    TemporaryDirectory = "../../../Temp",
+                    PermanentDirectory = "../../../Perm",
+                    LogDirectory = "../../../Logs",
+                    DataVersions = new DataVersions(),
+                    LogLevel = LogLevel.Debug
+                };
+                client.Configure(configureRequest);
+
                 client.Connect(connectRequest);
                 var schemasResponse = client.DiscoverSchemas(schemaRequest);
                 request.Schema = schemasResponse.Schemas[0];
@@ -369,7 +390,6 @@ namespace PluginSalesforceTest.Plugin
                 var response = client.ReadStream(request, null, null, cancellationToken.Token);
                 var responseStream = response.ResponseStream;
 
-
                 while (await responseStream.MoveNext())
                 {
                     records.Add(responseStream.Current);
@@ -377,14 +397,14 @@ namespace PluginSalesforceTest.Plugin
             }
             catch (Exception e)
             {
-                Assert.Equal("Status(StatusCode=Cancelled, Detail=\"Cancelled\")", e.Message);
+                Assert.Equal("Status(StatusCode=\"Cancelled\", Detail=\"Cancelled\")", e.Message);
             }
 
 
             // assert
             Assert.Equal(3, records.Count);
 
-            var record = JsonConvert.DeserializeObject<Dictionary<string, object>>(records[0].DataJson);
+            // var record = JsonConvert.DeserializeObject<Dictionary<string, object>>(records[0].DataJson);
             // Assert.Equal("~", record["tilde"]);
 
             // cleanup
@@ -560,6 +580,12 @@ namespace PluginSalesforceTest.Plugin
 
             var request = new PrepareWriteRequest()
             {
+                DataVersions = new DataVersions {
+                    JobId = "test",
+                    ShapeId = "test-shape",
+                    JobDataVersion = 1,
+                    ShapeDataVersion = 1,
+                },
                 Schema = new Schema
                 {
                     Id = "Account",
@@ -627,6 +653,12 @@ namespace PluginSalesforceTest.Plugin
 
             var prepareRequest = new PrepareWriteRequest()
             {
+                DataVersions = new DataVersions {
+                    JobId = "test-write",
+                    ShapeId = "test-write-shape",
+                    JobDataVersion = 1,
+                    ShapeDataVersion = 1,
+                },
                 Schema = new Schema
                 {
                     Id = "Account",

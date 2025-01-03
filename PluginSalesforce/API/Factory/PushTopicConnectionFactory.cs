@@ -12,7 +12,6 @@ namespace PluginSalesforce.API.Factory
     {
         public PushTopicConnection GetPushTopicConnection(RequestHelper requestHelper, string channel)
         {
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls13;
             PushTopicConnection pushTopicConnection = null;
 
             var accessToken = requestHelper.GetToken();
@@ -20,7 +19,7 @@ namespace PluginSalesforce.API.Factory
 
             try
             {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls13;
                 var readTimeOut = 120000;
                 var streamingEndpointURI = "/cometd/52.0";
                 var options = new Dictionary<string, object>

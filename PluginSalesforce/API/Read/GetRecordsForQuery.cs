@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Web;
 using Naveego.Sdk.Plugins;
 using Newtonsoft.Json;
@@ -17,12 +16,12 @@ namespace PluginSalesforce.API.Read
             // get records
             List<string> allRecordIds = new List<string>();
             var loopCount = 0;
-            var lastId = "";
-            var previousLastId = "";
             var recordCount = 0;
 
             var query = Utility.Utility.GetDefaultQuery(schema);
-                
+
+            string lastId;
+            string previousLastId;
             do
             {
                 loopCount++;
@@ -55,7 +54,7 @@ namespace PluginSalesforce.API.Read
             {
                 response.EnsureSuccessStatusCode();
             }
-            catch (Exception e)
+            catch
             {
                 var errorBody = await response.Content.ReadAsStringAsync();
                 throw new Exception(errorBody);

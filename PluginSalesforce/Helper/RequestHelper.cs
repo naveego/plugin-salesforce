@@ -3,7 +3,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Naveego.Sdk.Logging;
-using PluginSalesforce.API.Utility;
 
 namespace PluginSalesforce.Helper
 {
@@ -47,7 +46,7 @@ namespace PluginSalesforce.Helper
             // add token to the request and execute the request
             try
             {
-                var uri = String.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
+                var uri = string.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
                 
                 var client = _client;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -128,7 +127,7 @@ namespace PluginSalesforce.Helper
             // add token to the request and execute the request
             try
             {
-                var uri = String.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
+                var uri = string.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
                 
                 var client = _client;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
