@@ -222,15 +222,17 @@ namespace PluginSalesforce.Plugin
 
             Logger.Info("Connecting...");
             Logger.Info(JsonConvert.SerializeObject(request, Formatting.Indented));
-//            Logger.Info("Got OAuth State: " + request.OauthStateJson);
-//            Logger.Info("Got OAuthConfig " + JsonConvert.SerializeObject(request.OauthConfiguration));
+            //            Logger.Info("Got OAuth State: " + request.OauthStateJson);
+            //            Logger.Info("Got OAuthConfig " + JsonConvert.SerializeObject(request.OauthConfiguration));
 
             OAuthState oAuthState;
             OAuthConfig oAuthConfig;
+            ConnectSettings connectSettings;
             try
             {
                 oAuthState = JsonConvert.DeserializeObject<OAuthState>(request.OauthStateJson);
                 oAuthConfig = JsonConvert.DeserializeObject<OAuthConfig>(oAuthState.Config);
+                connectSettings = JsonConvert.DeserializeObject<ConnectSettings>(request.SettingsJson);
             }
             catch (Exception e)
             {
@@ -252,13 +254,14 @@ namespace PluginSalesforce.Plugin
                     ClientId = request.OauthConfiguration.ClientId,
                     ClientSecret = request.OauthConfiguration.ClientSecret,
                     RefreshToken = oAuthState.RefreshToken,
-                    InstanceUrl = oAuthConfig.InstanceUrl
+                    InstanceUrl = oAuthConfig.InstanceUrl,
+                    TlsVersion = connectSettings.TlsVersion
                 };
             }
             else
             {
                 var _settings = JsonConvert.DeserializeObject<Settings>(request.SettingsJson);
-                
+
                 settings = new Settings
                 {
                     ClientId = _settings.ClientId,
@@ -380,7 +383,7 @@ namespace PluginSalesforce.Plugin
             Logger.Info("Discovering Schemas...");
 
             DiscoverSchemasResponse discoverSchemasResponse = new DiscoverSchemasResponse();
-            
+
             // handle query based schema
             try
             {
@@ -471,7 +474,7 @@ namespace PluginSalesforce.Plugin
         {
             Logger.Info("Configuring real time...");
 
-            
+
             var schemaJson = Read.GetSchemaJson();
             var uiJson = Read.GetUIJson();
 
@@ -491,7 +494,7 @@ namespace PluginSalesforce.Plugin
                     }
                 });
             }
-            
+
             // if first call 
             if (string.IsNullOrWhiteSpace(request.Form.DataJson) || request.Form.DataJson == "{}")
             {
@@ -508,7 +511,7 @@ namespace PluginSalesforce.Plugin
                     }
                 });
             }
-            
+
             // TODO: Enhancement - Validate if the passed in channel name is valid and covers all the properties of the schema
 
             return Task.FromResult(new ConfigureRealTimeResponse
@@ -545,7 +548,7 @@ namespace PluginSalesforce.Plugin
             try
             {
                 var recordsCount = 0;
-                
+
                 if (!string.IsNullOrWhiteSpace(request.RealTimeSettingsJson))
                 {
                     recordsCount = await Read.ReadRecordsRealTimeAsync(_client, request, responseStream,
