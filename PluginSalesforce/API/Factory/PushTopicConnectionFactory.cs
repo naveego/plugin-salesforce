@@ -23,9 +23,6 @@ namespace PluginSalesforce.API.Factory
             {
                 switch (requestHelper.GetTlsVersion())
                 {
-                    case "System Default":
-                        ServicePointManager.SecurityProtocol = SecurityProtocolType.SystemDefault;
-                        break;
                     case "TLS 1.2":
                         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                         break;
@@ -33,7 +30,7 @@ namespace PluginSalesforce.API.Factory
                         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls13;
                         break;
                     default:
-                        ServicePointManager.SecurityProtocol = SecurityProtocolType.SystemDefault;
+                        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                         break;
                 }
 

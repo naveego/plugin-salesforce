@@ -41,9 +41,8 @@
           "type": "string",
           "title": "TLS Version",
           "description": "Which TLS version to use in the plugin",
-          "default": "System Default",
+          "default": "TLS 1.2",
           "enum": [
-            "System Default",
             "TLS 1.2",
             "TLS 1.3"
           ]
