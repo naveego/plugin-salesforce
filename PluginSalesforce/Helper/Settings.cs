@@ -8,6 +8,7 @@ namespace PluginSalesforce.Helper
         public string ClientSecret { get; set; }
         public string RefreshToken { get; set; }
         public string InstanceUrl { get; set; }
+        public string TlsVersion { get; set; }
 
         /// <summary>
         /// Validates the settings input object
@@ -19,21 +20,30 @@ namespace PluginSalesforce.Helper
             {
                 throw new Exception("the ClientId property must be set");
             }
-            
+
             if (string.IsNullOrEmpty(ClientSecret))
             {
                 throw new Exception("the ClientSecret property must be set");
             }
-            
+
             if (string.IsNullOrEmpty(RefreshToken))
             {
                 throw new Exception("the RefreshToken property must be set");
             }
-            
+
             if (string.IsNullOrEmpty(InstanceUrl))
             {
                 throw new Exception("the InstanceUrl property must be set");
             }
+            if (string.IsNullOrEmpty(TlsVersion))
+            {
+                throw new Exception("the TlsVersion property must be set");
+            }
         }
+    }
+
+    public class ConnectSettings
+    {
+        public string TlsVersion { get; set; }
     }
 }

@@ -14,7 +14,7 @@ namespace PluginSalesforce.Helper
         private readonly Settings _settings;
         private readonly string _baseUrl;
         private readonly string _instanceUrl;
-        
+
         public RequestHelper(Settings settings, HttpClient client)
         {
             _authenticator = new Authenticator(settings, client);
@@ -43,12 +43,12 @@ namespace PluginSalesforce.Helper
                 Logger.Error(e, e.Message);
                 throw;
             }
-            
+
             // add token to the request and execute the request
             try
             {
                 var uri = String.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
-                
+
                 var client = _client;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -62,7 +62,7 @@ namespace PluginSalesforce.Helper
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Post Async request wrapper for making authenticated requests
         /// </summary>
@@ -83,12 +83,12 @@ namespace PluginSalesforce.Helper
                 Logger.Error(e, e.Message);
                 throw;
             }
-            
+
             // add token to the request and execute the request
             try
             {
                 var uri = String.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
-                
+
                 var client = _client;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -124,12 +124,12 @@ namespace PluginSalesforce.Helper
                 Logger.Error(e, e.Message);
                 throw;
             }
-            
+
             // add token to the request and execute the request
             try
             {
                 var uri = String.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
-                
+
                 var client = _client;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -144,7 +144,7 @@ namespace PluginSalesforce.Helper
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Patch async wrapper for making authenticated requests
         /// </summary>
@@ -165,12 +165,12 @@ namespace PluginSalesforce.Helper
                 Logger.Error(e, e.Message);
                 throw;
             }
-            
+
             // add token to the request and execute the request
             try
             {
                 var uri = String.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
-                
+
                 var client = _client;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -185,7 +185,7 @@ namespace PluginSalesforce.Helper
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Delete async wrapper for making authenticated requests
         /// </summary>
@@ -205,12 +205,12 @@ namespace PluginSalesforce.Helper
                 Logger.Error(e, e.Message);
                 throw;
             }
-            
+
             // add token to the request and execute the request
             try
             {
                 var uri = String.Format("{0}/{1}", _baseUrl, path.TrimStart('/'));
-                
+
                 var client = _client;
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -227,12 +227,17 @@ namespace PluginSalesforce.Helper
 
         public string GetToken()
         {
-            return  _authenticator.GetToken().Result;
+            return _authenticator.GetToken().Result;
         }
 
         public string GetInstanceUrl()
         {
             return _instanceUrl;
+        }
+
+        public string GetTlsVersion()
+        {
+            return _settings.TlsVersion;
         }
     }
 }
