@@ -144,8 +144,6 @@ namespace PluginSalesforce.Plugin
                     response.EnsureSuccessStatusCode();
                 }
 
-                Logger.Info(await response.Content.ReadAsStringAsync());
-
                 var content = JsonConvert.DeserializeObject<TokenResponse>(await response.Content.ReadAsStringAsync());
 
                 oAuthState.AuthToken = content.AccessToken;
