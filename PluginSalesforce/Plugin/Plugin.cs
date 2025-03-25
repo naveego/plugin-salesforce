@@ -3,23 +3,19 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
-using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Naveego.Sdk.Logging;
 using Naveego.Sdk.Plugins;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using PluginSalesforce.API.Discover;
 using PluginSalesforce.API.Factory;
 using PluginSalesforce.API.Read;
-using PluginSalesforce.API.Utility;
 using PluginSalesforce.DataContracts;
 using PluginSalesforce.Helper;
 
@@ -33,12 +29,12 @@ namespace PluginSalesforce.Plugin
         private readonly ServerStatus _server;
         private TaskCompletionSource<bool> _tcs;
         private readonly ConcurrentDictionary<string, List<FieldObject>> _fieldObjectsDictionary;
-        private readonly IPushTopicConnectionFactory _pushTopicConnectionFactory;
+        private readonly ISalesforcePubSubClientFactory _salesforcePubSubClientFactory;
 
-        public Plugin(HttpClient client = null, IPushTopicConnectionFactory pushTopicConnectionFactory = null)
+        public Plugin(HttpClient client = null, ISalesforcePubSubClientFactory salesforcePubSubClientFactory = null)
         {
             _injectedClient = client ?? new HttpClient();
-            _pushTopicConnectionFactory = pushTopicConnectionFactory ?? new PushTopicConnectionFactory();
+            _salesforcePubSubClientFactory = salesforcePubSubClientFactory ?? new SalesforcePubSubClientFactory();
             _server = new ServerStatus
             {
                 Connected = false,
@@ -255,7 +251,7 @@ namespace PluginSalesforce.Plugin
                     ClientSecret = request.OauthConfiguration.ClientSecret,
                     RefreshToken = oAuthState.RefreshToken,
                     InstanceUrl = oAuthConfig.InstanceUrl,
-                    TlsVersion = connectSettings.TlsVersion
+                    TlsVersion = connectSettings.TlsVersion,
                 };
             }
             else
@@ -512,7 +508,39 @@ namespace PluginSalesforce.Plugin
                 });
             }
 
-            // TODO: Enhancement - Validate if the passed in channel name is valid and covers all the properties of the schema
+            // Validate if the passed in channel name is valid and covers all the properties of the schema
+            try
+            {
+                var realTimeSettings = JsonConvert.DeserializeObject<RealTimeSettings>(request.Form.DataJson);
+
+                // build pub sub api client
+                var pubSubClient = _salesforcePubSubClientFactory.GetPubSubClient(_client.GetToken(), _client.GetInstanceUrl(), realTimeSettings.OrganizationId);
+
+                // get topic info
+                var topicName = realTimeSettings.ChannelName;
+                if (!topicName.StartsWith("/data/"))
+                {
+                    topicName = $"/data/{realTimeSettings.ChannelName}";
+                }
+
+                pubSubClient.GetTopicByName(topicName);
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, e.Message, context);
+                return Task.FromResult(new ConfigureRealTimeResponse
+                {
+                    Form = new ConfigurationFormResponse
+                    {
+                        DataJson = request.Form.DataJson,
+                        DataErrorsJson = "",
+                        Errors = { e.Message },
+                        SchemaJson = schemaJson,
+                        UiJson = uiJson,
+                        StateJson = request.Form.StateJson,
+                    }
+                });
+            }
 
             return Task.FromResult(new ConfigureRealTimeResponse
             {
@@ -552,7 +580,7 @@ namespace PluginSalesforce.Plugin
                 if (!string.IsNullOrWhiteSpace(request.RealTimeSettingsJson))
                 {
                     recordsCount = await Read.ReadRecordsRealTimeAsync(_client, request, responseStream,
-                        context, _server.Config.PermanentDirectory, _pushTopicConnectionFactory);
+                        context, _server.Config.PermanentDirectory, _salesforcePubSubClientFactory);
                 }
                 else
                 {

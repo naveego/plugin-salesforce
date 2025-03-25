@@ -13,6 +13,7 @@ namespace PluginSalesforce.API.Read
                     "ui:order", new[]
                     {
                         "ChannelName",
+                        "OrganizationId",
                         "BatchWindowSeconds"
                     }
                 }
