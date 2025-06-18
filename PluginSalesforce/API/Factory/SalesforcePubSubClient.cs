@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Naveego.Sdk.Logging;
@@ -17,6 +18,7 @@ public class SalesforcePubSubClient
   private readonly Metadata _metadata;
   private readonly ConcurrentQueue<string> _messages = new ConcurrentQueue<string>();
   private AsyncDuplexStreamingCall<FetchRequest, FetchResponse> _stream = null;
+  private ByteString _replayId = ByteString.Empty;
   private int _messagesRemaining = MAX_MESSAGES;
 
   public SalesforcePubSubClient(string address, Metadata metadata)
@@ -61,7 +63,8 @@ public class SalesforcePubSubClient
       FetchRequest fetchRequest = new FetchRequest
       {
         TopicName = topicName,
-        ReplayPreset = ReplayPreset.Latest,
+        ReplayId = _replayId,
+        ReplayPreset = Equals(ByteString.Empty, _replayId) ? ReplayPreset.Latest : ReplayPreset.Custom,
         NumRequested = 100
       };
 
@@ -124,7 +127,8 @@ public class SalesforcePubSubClient
 
       if (responseStream.Current.Events != null)
       {
-        Logger.Info($"Number of events received: {responseStream.Current.Events.Count}");
+        _replayId = responseStream.Current.LatestReplayId;
+        Logger.Info($"Number of events received: {responseStream.Current.Events.Count}, Replay ID: {_replayId}");
         foreach (var item in responseStream.Current.Events)
         {
 
