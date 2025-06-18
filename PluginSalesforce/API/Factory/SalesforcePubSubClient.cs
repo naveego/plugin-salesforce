@@ -11,9 +11,13 @@ using SolTechnology.Avro;
 
 public class SalesforcePubSubClient
 {
+  const int MAX_MESSAGES = 100;
+  const int RESUBSCRIBE_THRESHOLD = 50;
   private readonly PubSub.PubSubClient _client;
   private readonly Metadata _metadata;
   private readonly ConcurrentQueue<string> _messages = new ConcurrentQueue<string>();
+  private AsyncDuplexStreamingCall<FetchRequest, FetchResponse> _stream = null;
+  private int _messagesRemaining = MAX_MESSAGES;
 
   public SalesforcePubSubClient(string address, Metadata metadata)
   {
@@ -52,19 +56,41 @@ public class SalesforcePubSubClient
     {
       Logger.Info($"Subscribing to topic {topicName}");
 
-      using AsyncDuplexStreamingCall<FetchRequest, FetchResponse> stream = _client.Subscribe(headers: _metadata, cancellationToken: cts.Token);
+      _stream = _client.Subscribe(headers: _metadata, cancellationToken: cts.Token);
 
       FetchRequest fetchRequest = new FetchRequest
       {
         TopicName = topicName,
         ReplayPreset = ReplayPreset.Latest,
-        NumRequested = 10
+        NumRequested = 100
       };
 
-      await WriteToStream(stream.RequestStream, fetchRequest);
+      await WriteToStream(_stream.RequestStream, fetchRequest);
 
-      await ReadFromStream(stream.ResponseStream, jsonSchema, cts);
+      await ReadFromStream(_stream.ResponseStream, topicName, jsonSchema, cts);
 
+    }
+    catch (RpcException e) when (e.StatusCode == StatusCode.Cancelled)
+    {
+      Logger.Error(e, $"Operation Cancelled: {e.Message} Source {e.Source} {e.StackTrace}");
+      throw;
+    }
+  }
+
+  public async Task Resubscribe(string topicName)
+  {
+    try
+    {
+      Logger.Info($"Resubscribing to topic {topicName}");
+
+      FetchRequest fetchRequest = new FetchRequest
+      {
+        TopicName = topicName,
+        ReplayPreset = ReplayPreset.Latest,
+        NumRequested = MAX_MESSAGES
+      };
+
+      await WriteToStream(_stream.RequestStream, fetchRequest);
     }
     catch (RpcException e) when (e.StatusCode == StatusCode.Cancelled)
     {
@@ -90,7 +116,7 @@ public class SalesforcePubSubClient
     await requestStream.WriteAsync(fetchRequest);
   }
 
-  private async Task ReadFromStream(IAsyncStreamReader<FetchResponse> responseStream, string jsonSchema, CancellationTokenSource source = null)
+  private async Task ReadFromStream(IAsyncStreamReader<FetchResponse> responseStream, string topicName, string jsonSchema, CancellationTokenSource source = null)
   {
     while (await responseStream.MoveNext())
     {
@@ -107,6 +133,13 @@ public class SalesforcePubSubClient
           Logger.Debug($"response: {jsonPayload}");
 
           _messages.Enqueue(jsonPayload);
+          _messagesRemaining--;
+
+          if (_messagesRemaining < RESUBSCRIBE_THRESHOLD)
+          {
+            await Resubscribe(topicName);
+            _messagesRemaining = MAX_MESSAGES;
+          }
         }
       }
       else
