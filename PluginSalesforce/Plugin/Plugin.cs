@@ -523,7 +523,18 @@ namespace PluginSalesforce.Plugin
                     topicName = $"/data/{realTimeSettings.ChannelName}";
                 }
 
-                pubSubClient.GetTopicByName(topicName);
+                var topicInfo = pubSubClient.GetTopicByName(topicName);
+
+                if (string.IsNullOrEmpty(topicInfo.SchemaId))
+                {
+                    var baseTopicName = realTimeSettings.BaseChannelName;
+                    var baseTopic = pubSubClient.GetTopicByName(baseTopicName);
+                    pubSubClient.GetSchemaById(baseTopic.SchemaId);
+                }
+                else
+                {
+                    pubSubClient.GetSchemaById(topicInfo.SchemaId);
+                }
             }
             catch (Exception e)
             {
